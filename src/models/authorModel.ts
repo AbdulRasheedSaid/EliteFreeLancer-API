@@ -90,11 +90,6 @@ const authorSchema = new mongoose.Schema(
       set: (qualifications: string[]) => qualifications.map((q) => q.trim()), // Sanitize array elements
       default: ['Home School']
     },
-    sessions: [{
-      sessionId: {
-          type: String,
-      },
-  }]
   },
   {
     timestamps: true,
@@ -117,17 +112,7 @@ export const getAuthorByEmail = (email: string) => Author.findOne({ email });
 export const getAuthorById = (id: string) => Author.findById(id);
 export const createAuthor = (values: Record<string, any>) =>
   new Author(values).save().then((author) => author.toObject());
-export const getUserBySessionToken = (sessionToken: string) => Author.findOne({
-    'authentication.sessionToken' : sessionToken
-})
 export const deleteAuthorById = (id: string) => Author.findByIdAndDelete(id);
 export const updateAuthorById = (id: string, values: Record<string, any>) =>
   Author.findByIdAndUpdate(id, values, { new: true });
-
-
-export const addSessionToUser = (userId: string, sessionId: string) => 
-  Author.findByIdAndUpdate(userId, {
-      $push: { sessions: { sessionId } }
-  });
-
 export default Author;

@@ -2,25 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import Author from "../models/authorModel.js";
 import bcrypt from "bcrypt";
-
-passport.serializeUser((author: any, done) => {
-  done(null, author._id);
-});
-
-passport.deserializeUser(async (id: string, done) => {
-  try {
-    const author = await Author.findById(id);
-    if (!author) {
-      console.log('no author')
-      return done(null, false); // User not found
-    }
-    console.log({ ...author.toObject(), _id: author._id.toString() });
-
-    done(null, { ...author.toObject(), _id: author._id.toString() });
-  } catch (error) {
-    done(error);
-  }
-});
+import { generateToken } from "helpers/jwtGeneration.js";
 
 passport.use(
   new LocalStrategy(
@@ -39,24 +21,31 @@ passport.use(
           return done(null, false, { message: "Invalid email or password." });
         }
 
+        const token = generateToken(author._id.toString());
         
-        // Create session
-        const sessionId = author._id.toString();
-        await Author.findByIdAndUpdate(author._id, {
-          $push: { 
-            sessions: { 
-              sessionId
-            }
-          }
+        return done(null, { 
+          ...author.toObject(), 
+          _id: author._id.toString(),
+          token 
         });
-
-        console.log({ ...author.toObject(), _id: author._id.toString() });
-        return done(null, { ...author.toObject(), _id: author._id.toString() });
       } catch (error) {
         return done(error);
       }
     }
   )
 );
+
+passport.serializeUser((user: any, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser(async (id: string, done) => {
+  try {
+    const user = await Author.findById(id);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
 
 export default passport;

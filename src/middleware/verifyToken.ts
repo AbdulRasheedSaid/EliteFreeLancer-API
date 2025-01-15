@@ -1,9 +1,7 @@
-import { Request, Response, NextFunction, Router } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from 'helpers/jwtGeneration.js';
 
-const router = Router()
-
-router.post('/verify/session', async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+const checkToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -20,6 +18,6 @@ router.post('/verify/session', async (req: Request, res: Response, next: NextFun
     console.log('Not Verified:', error)
     return res.status(403).json({ message: 'Invalid token' });
   }
-});
+};
 
-export default router
+export default checkToken
