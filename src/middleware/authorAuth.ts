@@ -1,22 +1,22 @@
 import express from "express";
-import Category from "../models/categoryModel.js";
+import Gig from "../models/gigModel.js";
 import lodash from "lodash";
 
 export const verifyAuthorOwnership = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise <any> => {
   try {
-    const { categoryId } = req.params; // Category ID from request parameters
+    const { gigId } = req.params; // Gig ID from request parameters
     const userId = lodash.get(req, "identity.id") as string; // User ID from req.identity
 
     if(!userId) {
         return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const category = await Category.findById(categoryId);
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+    const gig = await Gig.findById(gigId);
+    if (!gig) {
+      return res.status(404).json({ message: "Gig not found" });
     }
 
-    if (category.author.toString() !== userId) {
+    if (gig.author.toString() !== userId) {
       return res.status(403).json({ message: "You are not authorized to perform this action" });
     }
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import passport from 'passport';
 import bcrypt from 'bcrypt';
-import Author from '../models/authorModel.js';
+import Author from '../../../models/authorModel.js';
 import { generateToken } from "helpers/jwtGeneration.js";
 const router = express.Router();
 

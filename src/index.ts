@@ -4,14 +4,14 @@ import { Port, mongoDBUrl, apiURL } from "./config.js";
 import bodyParser from "body-parser";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import router from "./routes/index.js";
+
 import author from "./routes/authorRoutes.js";
-import category from "./routes/categoryRoutes.js";
+import gig from "./routes/gigRoutes.js";
 import search from "./routes/search.js";
 import cors from "cors";
 import passport from "passport";
-import authRouter from "./routes/oath.js";
-import passwordRouter from "./routes/authpassword.js";
+import authRouter from "./routes/authentication/google/oath.js";
+import passwordRouter from "./routes/authentication/emailAndPassword/authpassword.js";
 import "./stratagies/password.js";
 import "./stratagies/gOath.js";
 import dotenv from "dotenv";
@@ -41,7 +41,7 @@ app.use(passport.initialize());
 
 // Routes
 app.use("/api/author", author);
-app.use("/api/category", category);
+app.use("/api/gig", gig);
 app.use("/search", search);
 app.use("/api/auth", authRouter);
 app.use("/api/auth/local", passwordRouter);
