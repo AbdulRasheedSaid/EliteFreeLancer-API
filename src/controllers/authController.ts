@@ -1,125 +1,243 @@
-import express from "express";
-import { auth } from "lib/auth.js";
-import { fromNodeHeaders } from "better-auth/node";
-import { PrismaClient } from '@prisma/client'
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import passport from 'passport';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
+// Generate JWT token
+const generateToken = (userId: string): string => {
+  return jwt.sign({ id: userId }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
+};
 
-export const signup = async (req: express.Request, res: express.Response) =>{
+// Register a new user
+export const register = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    console.log("Connected", req.body)
-    // BetterAuth expects the payload to include email, password, name, and callbackURL (if needed)
-    const { email, password, name } = req.body;
-    
-    // Use the BetterAuth signup functionality (here we indicate it's an email signup)
-    const result = await auth.api.signUpEmail({
-      headers: fromNodeHeaders(req.headers),
-      method: "POST",
-      body: {
-        email,
-        password,
+    const { name, email, password, bio, city, region, phone, languages, qualification } = req.body;
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
         name,
+        email,
+        password: hashedPassword,
+        bio,
+        city: city || 'Accra',
+        region: region || 'Greater Accra',
+        phone,
+        languages: languages || ['English'],
+        qualification: qualification || ['Home School'],
+        emailVerified: false, // Will be verified later
       },
- 
     });
 
-    console.log("Succsess: ", result)
-    res.json(result);
-  }  catch (error: any) {
-    console.error("Signup error:", error);
-    res.status(400).json({ error: error.message });
-  }
-}
+    // Create verification token
+    const verificationToken = crypto.randomUUID();
+    await prisma.verification.create({
+      data: {
+        id: crypto.randomUUID(),
+        identifier: email,
+        value: verificationToken,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
 
-export const signIn = async (req: express.Request, res: express.Response) =>{
+    // TODO: Send verification email here
+
+    // Generate JWT token
+    const token = generateToken(user.id);
+
+    
+
+    // Create a new session
+    await prisma.session.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Remove password from response
+    const userWithoutPassword = { ...user };
+    delete userWithoutPassword.password;
+
+    res.status(201).json({
+      message: 'Registration successful',
+      user: userWithoutPassword,
+      token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Login with email and password
+export const login = (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('local', { session: false }, async (err: any, user: any, info: any) => {
     try {
-      console.log("Connected", req.body)
-      // BetterAuth expects the payload to include email, password, name, and callbackURL (if needed)
-      const { email, password } = req.body;
-      
-      // Use the BetterAuth signup functionality (here we indicate it's an email signup)
-      const result = await auth.api.signInEmail({
-        headers: fromNodeHeaders(req.headers),
-        method: "POST",
-        body: {
-          email,
-          password,
-        },
-        asResponse: true
-      });
-
-      const user = await prisma.user.findUnique({
-        where: { email },
-        include: {
-          sessions: {
-            orderBy: { createdAt: 'desc' }, // Order sessions with the newest first
-            take: 1, // Limit to the newest session only
-          },
-        },
-      });
-    
-      // Ensure the user and session exist
-      if (!user || user.sessions.length === 0) {
-        throw new Error('No sessions found for this user.');
+      if (err) {
+        return next(err);
       }
-    
-      // Access the token from the newest session
-      const newestSessionToken = user.sessions[0].token;
 
-      // Set a cookie named "testCookie" with the value "HelloWorld"
-      res.cookie("session_token", newestSessionToken, {
-        maxAge: 1000 * 60 * 5, // Cookie expires in 5 minutes
-        httpOnly: true,        // Prevents client-side JavaScript from accessing the cookie
-        sameSite: "lax",       // Adjust SameSite as needed (e.g., "lax", "strict", or "none")
-        secure: false,         // Set to true if using HTTPS; for local testing over HTTP, use false
-      });
-  
-      console.log("Succsess: ", result)
-      res.json(result);
-    }  catch (error: any) {
-      console.error("Signup error:", error);
-      res.status(400).json({ error: error.message });
-    }
-}
+      if (!user) {
+        return res.status(401).json({ message: info.message || 'Authentication failed' });
+      }
 
-export const session = async (req: express.Request, res: express.Response) =>{
-  try {
-    console.log(req.headers, fromNodeHeaders(req.headers), req.cookies, req.body)
-    // Better Auth's helper converts Node headers to the format it expects
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-    console.log("Session : ", session)
-    res.json(session);
-  } catch (error: any) {
-    console.error("Error getting session:", error);
-    res.status(500).json({ error: error.message });
-  }
-}
+      // Generate JWT token
+      const token = generateToken(user.id);
 
-export const sessionTry = async (req: express.Request, res: express.Response) =>{
-  try {
-    const { session } = req.body;
-    
-    const checkSession = await prisma.session.findFirst({
-      where: { token: session },
-      include: { 
-        user: { 
-          select: { name: true, email: true, image:true }  // Only select name and email
+      // Create a new session
+      await prisma.session.create({
+        data: {
+          id: crypto.randomUUID(),
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
-      },  
-    })
+      });
 
-    if (!checkSession || !checkSession.user) {
-      console.log("Session not set or user not found");
-      res.status(500).json("User not found!!!");
+      // Remove password from response
+      const userWithoutPassword = { ...user };
+      delete userWithoutPassword.password;
+
+      res.status(200).json({
+        message: 'Login successful',
+        user: userWithoutPassword,
+        token,
+      });
+    } catch (error) {
+      next(error);
+    }
+  })(req, res, next);
+};
+
+// Google OAuth login callback
+export const googleCallback = (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('google', { session: false }, async (err, user) => {
+    try {
+      if (err) {
+        return next(err);
+      }
+
+      if (!user) {
+        return res.status(401).json({ message: 'Authentication failed' });
+      }
+
+      // Generate JWT token
+      const token = generateToken(user.id);
+
+      // Create a new session
+      await prisma.session.create({
+        data: {
+          id: crypto.randomUUID(),
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Redirect to frontend with token
+      // You can customize this URL to your frontend app
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
+    } catch (error) {
+      next(error);
+    }
+  })(req, res, next);
+};
+
+// Verify email
+export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { token } = req.params;
+
+    // Find verification token
+    const verification = await prisma.verification.findFirst({
+      where: { value: token },
+    });
+
+    if (!verification || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired verification token' });
     }
 
-    const data = checkSession.user;
-    res.status(200).json(data)
-  } catch (error: any) {
-    console.error("Error getting session:", error);
-    res.status(500).json({ error: error.message });
+    // Update user's email verification status
+    await prisma.user.update({
+      where: { email: verification.identifier },
+      data: { emailVerified: true },
+    });
+
+    // Delete verification token
+    await prisma.verification.delete({
+      where: { id: verification.id },
+    });
+
+    res.status(200).json({ message: 'Email verified successfully' });
+  } catch (error) {
+    next(error);
   }
+};
+
+interface AuthenticatedUser {
+  id: string;
+  email: string;
+  password?: string; // optional, since you want to remove it before sending a response
+  // add other fields as needed
 }
+
+// Get current user
+export const getCurrentUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    // User is attached by passport middleware
+    const user = req.user as AuthenticatedUser;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    // Remove password from response
+    const userWithoutPassword = { ...user };
+    delete userWithoutPassword.password;
+
+    res.status(200).json({ user: userWithoutPassword });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Logout
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Delete session
+    // Note: For JWT tokens, you typically don't invalidate them server-side
+    // Instead, client-side should remove the token
+
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -49,16 +49,13 @@ model User {
 
 model Session {
   id        String   @id @default(uuid())
-  userId    String  // @unique
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
   expiresAt DateTime
-  token     String
-  updatedAt DateTime
-  ipAddress String?
-  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([token])
+  @@index([userId])
   @@map("session")
 }
 

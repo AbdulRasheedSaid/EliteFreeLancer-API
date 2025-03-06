@@ -5,11 +5,11 @@ import bodyParser from "body-parser";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 
-import author from "./routes/authorRoutes.js";
+import author from "./routes/authRoutes.js";
 import gig from "./routes/gigRoutes.js";
 import search from "./routes/search.js";
 import cors from "cors";
-import passport from "passport";
+
 import authRouter from "./routes/authentication/emailAndPassword/authRouter.js";
 import passwordRouter from "./routes/authentication/emailAndPassword/authpassword.js";
 import "./stratagies/password.js";
@@ -21,6 +21,8 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "lib/auth.js";
 
 import userRoutes from "./routes/userRouter.js";
+import passport from "config/passport.js";
+import authRoutes from 'routes/authRoutes.js';
 
 
 dotenv.config();
@@ -42,19 +44,30 @@ app.use(
 );
 
 // Initialize passport
+app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
+
 
 // Routes
 app.use("/api/author", author);
 app.use("/api/gig", gig);
 app.use("/search", search);
 
-// app.use("/api/auth/local", passwordRouter);
-// app.use("/api/auth", authenticateToken)
 app.use("/api/auth", authRouter);
 
 app.all("/api/auth/*", toNodeHandler(auth));
 app.use("/users", userRoutes);
+
+app.use('/api/auth', authRoutes);
+
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: 'Something went wrong',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+  });
+});
 
 app.get("/set-cookie", (req, res) => {
   // Set a cookie named "testCookie" with the value "HelloWorld"
@@ -66,21 +79,8 @@ app.get("/set-cookie", (req, res) => {
   });
   res.json({ message: "Cookie set successfully" });
 });
-// this is the endpoint that i am trying to access
-//app.use("/api/auth", authRouter);
 
 app.use(express.json());
-
-// Connect to MongoDB and start server
-// mongoose
-//   .connect(mongoDBUrl)
-//   .then(() => {
-//     console.log("Connected to MongoDB");
-//     app.listen(Port, () => {
-//       console.log(`The server is running on ${apiURL}....`);
-//     });
-//   })
-//   .catch((error) => console.log(error));
 
   app.listen(Port, () => {
     console.log(`The server is running on ${apiURL}....`);
