@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid()) // Equivalent to MongoDB's `_id`
+  googleId      String?   @unique // Nullable, used for Google OAuth
+  name          String
+  image         String    @default("https://archive.org/download/instagram-plain-round/instagram%20dip%20in%20hair.jpg")
+  password      String? // Nullable because it's only required if not using Google OAuth
+  bio           String?
+  email         String    @unique
+  emailVerified Boolean
+  city          String    @default("Accra")
+  region        String    @default("Greater Accra")
+  phone         String?
+  languages     String[]  @default(["English"]) // PostgreSQL supports array types
+  qualification String[]  @default(["Home School"])
+  gigs          Gig[] // This creates a reverse relation from User to Gig.
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure uniqueness for OAuth and normal login
+  // Compound index
+  accounts      Account[]
+
+  @@unique([googleId, email])
+  @@index([name])
+  @@index([city])
+  @@index([region])
+  @@index([languages])
+  @@index([qualification])
+  @@index([name, city, region])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String  // @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  token     String
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Gig {
+  id            String   @id @default(uuid()) // Equivalent to MongoDB's ObjectId
+  title         String
+  category      String
+  image         String
+  pitch         String
+  basicPitch    String
+  standardPitch String
+  premiumPitch  String
+  basicPrice    Float
+  standardPrice Float
+  premiumPrice  Float
+  userId        String
+  user          User     @relation(fields: [userId], references: [id]) // Foreign key to user
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Compound index for optimized queries
+  @@index([title])
+  @@index([category])
+  @@index([title, category])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}

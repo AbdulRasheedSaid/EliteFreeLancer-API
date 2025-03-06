@@ -53,12 +53,6 @@ const authorSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid email address!`,
       },
     },
-    country: {
-      type: String,
-      trim: true,
-      default: 'Ghana',
-      minlength: [2, "Country must be at least 2 characters long"],
-    },
     city: {
       type: String,
       default: 'Accra',

@@ -15,16 +15,21 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/client": "6.3.0",
     "@types/bcrypt": "^5.0.2",
     "@types/express-session": "^1.18.1",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/nodemailer": "^6.4.17",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/passport-local": "^1.0.38",
+    "@types/pg": "^8.11.11",
     "bcrypt": "^5.1.1",
+    "better-auth": "^1.1.15",
     "body-parser": "^1.20.3",
     "compression": "^1.7.5",
     "connect-mongo": "^5.1.0",
+    "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -35,14 +40,17 @@
     "lodash": "^4.17.21",
     "mongodb": "^6.12.0",
     "mongoose": "^8.9.3",
+    "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
+    "pg": "^8.13.1",
     "pnpm": "^9.15.2"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",
     "@types/compression": "^1.7.5",
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
@@ -51,8 +59,10 @@
     "@types/node": "^22.10.5",
     "@types/nodemon": "^1.19.6",
     "nodemon": "^3.1.9",
+    "prisma": "^6.3.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
-  }
+  },
+  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
 }
