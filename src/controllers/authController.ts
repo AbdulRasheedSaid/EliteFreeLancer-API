@@ -4,6 +4,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { createVerificationToken, sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -50,25 +51,12 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       },
     });
 
-    // Create verification token
-    const verificationToken = crypto.randomUUID();
-    await prisma.verification.create({
-      data: {
-        id: crypto.randomUUID(),
-        identifier: email,
-        value: verificationToken,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-
-    // TODO: Send verification email here
+    // Create verification token and send email
+    const verificationToken = await createVerificationToken(email);
+    await sendVerificationEmail(email, name, verificationToken);
 
     // Generate JWT token
     const token = generateToken(user.id);
-
-    
 
     // Create a new session
     await prisma.session.create({
@@ -86,7 +74,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     delete userWithoutPassword.password;
 
     res.status(201).json({
-      message: 'Registration successful',
+      message: 'Registration successful. Please check your email to verify your account.',
       user: userWithoutPassword,
       token,
     });
@@ -94,6 +82,94 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     next(error);
   }
 };
+
+// Request password reset
+export const requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { email } = req.body;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // For security reasons, don't reveal that the email doesn't exist
+      return res.status(200).json({ message: 'If your email exists in our database, you will receive a password reset link.' });
+    }
+
+    // Send password reset email
+    await sendPasswordResetEmail(email, user.name);
+
+    res.status(200).json({ message: 'If your email exists in our database, you will receive a password reset link.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Reset password
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { token, password } = req.body;
+
+    // Find verification token
+    const verification = await prisma.verification.findFirst({
+      where: { value: token },
+    });
+
+    if (!verification || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired password reset token' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Update user's password
+    await prisma.user.update({
+      where: { email: verification.identifier },
+      data: { password: hashedPassword },
+    });
+
+    // Delete verification token
+    await prisma.verification.delete({
+      where: { id: verification.id },
+    });
+
+    res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Resend verification email
+export const resendVerificationEmail = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { email } = req.body;
+
+    // Check if user exists and is not already verified
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+
+    // Create verification token and send email
+    const verificationToken = await createVerificationToken(email);
+    await sendVerificationEmail(email, user.name, verificationToken);
+
+    res.status(200).json({ message: 'Verification email has been sent' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 // Login with email and password
 export const login = (req: Request, res: Response, next: NextFunction) => {

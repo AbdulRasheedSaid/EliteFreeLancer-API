@@ -10,15 +10,7 @@ import gig from "./routes/gigRoutes.js";
 import search from "./routes/search.js";
 import cors from "cors";
 
-import authRouter from "./routes/authentication/emailAndPassword/authRouter.js";
-import passwordRouter from "./routes/authentication/emailAndPassword/authpassword.js";
-import "./stratagies/password.js";
-import "./stratagies/gOath.js";
 import dotenv from "dotenv";
-import authenticateToken from "./routes/verifySession.js";
-
-import { toNodeHandler } from "better-auth/node";
-import { auth } from "lib/auth.js";
 
 import userRoutes from "./routes/userRouter.js";
 import passport from "config/passport.js";
@@ -53,9 +45,7 @@ app.use("/api/author", author);
 app.use("/api/gig", gig);
 app.use("/search", search);
 
-app.use("/api/auth", authRouter);
 
-app.all("/api/auth/*", toNodeHandler(auth));
 app.use("/users", userRoutes);
 
 app.use('/api/auth', authRoutes);
