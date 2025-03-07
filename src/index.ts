@@ -1,18 +1,14 @@
 import express from "express";
-import mongoose from "mongoose";
-import { Port, mongoDBUrl, apiURL } from "./config/config.js";
+import { Port, apiURL } from "./config/config.js";
 import bodyParser from "body-parser";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 
 import author from "./routes/authRoutes.js";
 import gig from "./routes/gigRoutes.js";
-import search from "./routes/search.js";
 import cors from "cors";
 
 import dotenv from "dotenv";
-
-import userRoutes from "./routes/userRouter.js";
 import passport from "config/passport.js";
 import authRoutes from 'routes/authRoutes.js';
 
@@ -43,10 +39,7 @@ app.use(passport.initialize());
 // Routes
 app.use("/api/author", author);
 app.use("/api/gig", gig);
-app.use("/search", search);
 
-
-app.use("/users", userRoutes);
 
 app.use('/api/auth', authRoutes);
 
