@@ -57,7 +57,7 @@ export const createVerificationToken = async (email: string): Promise<string> =>
 
 // Send verification email
 export const sendVerificationEmail = async (email: string, name: string, token: string): Promise<void> => {
-  const verificationLink = `${API_URL}/auth/verify/${token}`;
+  const verificationLink = `${FRONTEND_URL}/auth/verify/${token}`;
   
   // HTML email template
   const htmlContent = `
@@ -137,7 +137,7 @@ export const sendPasswordResetEmail = async (email: string, name: string): Promi
       },
     });
     
-    const resetLink = `${FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetLink = `${FRONTEND_URL}/user/reset-password/${resetToken}`;
     
     // HTML email template
     const htmlContent = `

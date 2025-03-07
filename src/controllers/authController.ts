@@ -22,6 +22,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
   try {
     const { name, email, password, bio, city, region, phone, languages, qualification } = req.body;
 
+    console.log(req.body)
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -51,6 +53,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       },
     });
 
+    console.log(user)
+
     // Create verification token and send email
     const verificationToken = await createVerificationToken(email);
     await sendVerificationEmail(email, name, verificationToken);
@@ -63,6 +67,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       data: {
         id: crypto.randomUUID(),
         userId: user.id,
+        token: token,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -72,6 +77,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     // Remove password from response
     const userWithoutPassword = { ...user };
     delete userWithoutPassword.password;
+
+    console.log('User Created')
 
     res.status(201).json({
       message: 'Registration successful. Please check your email to verify your account.',
@@ -100,6 +107,7 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
 
     // Send password reset email
     await sendPasswordResetEmail(email, user.name);
+    console.log('Reset Email Sent')
 
     res.status(200).json({ message: 'If your email exists in our database, you will receive a password reset link.' });
   } catch (error) {
@@ -136,6 +144,7 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
       where: { id: verification.id },
     });
 
+    console.log('Password has been reseted')
     res.status(200).json({ message: 'Password has been reset successfully' });
   } catch (error) {
     next(error);
@@ -183,6 +192,10 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
         return res.status(401).json({ message: info.message || 'Authentication failed' });
       }
 
+      if(!user.emailVerified){
+        return res.status(401).json({ message: 'Verify your email first' });
+      }
+
       // Generate JWT token
       const token = generateToken(user.id);
 
@@ -191,6 +204,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
         data: {
           id: crypto.randomUUID(),
           userId: user.id,
+          token: token,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -201,6 +215,7 @@ export const login = (req: Request, res: Response, next: NextFunction) => {
       const userWithoutPassword = { ...user };
       delete userWithoutPassword.password;
 
+      console.log('Get current user',userWithoutPassword)
       res.status(200).json({
         message: 'Login successful',
         user: userWithoutPassword,
@@ -232,6 +247,7 @@ export const googleCallback = (req: Request, res: Response, next: NextFunction) 
         data: {
           id: crypto.randomUUID(),
           userId: user.id,
+          token: token,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -272,6 +288,7 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       where: { id: verification.id },
     });
 
+    console.log('Email is verified')
     res.status(200).json({ message: 'Email verified successfully' });
   } catch (error) {
     next(error);
@@ -299,6 +316,7 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
     const userWithoutPassword = { ...user };
     delete userWithoutPassword.password;
 
+    console.log('Get current user',userWithoutPassword)
     res.status(200).json({ user: userWithoutPassword });
   } catch (error) {
     next(error);

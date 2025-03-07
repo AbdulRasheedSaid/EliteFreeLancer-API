@@ -4,7 +4,7 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-
+import crypto from 'crypto';
 const prisma = new PrismaClient();
 
 // Load environment variables
